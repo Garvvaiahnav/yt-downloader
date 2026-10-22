@@ -4,6 +4,7 @@ then ffprobe verification. Two jobs run at once; the rest wait."""
 import itertools
 import json
 import os
+import re
 import shutil
 import subprocess
 import threading
@@ -15,7 +16,7 @@ from pathlib import Path
 import yt_dlp
 from yt_dlp.utils import DownloadCancelled
 
-from . import settings, verify
+from . import account, settings, verify
 from .errors import friendly
 from .formats import CODEC_NAMES, InputError, check_url, container_verdict, summarize
 from .threads import ThreadsIE
@@ -30,7 +31,6 @@ class _QuietLogger:
 
 
 def ydl_opts(**extra):
-    s = settings.load()
     opts = {
         "quiet": True, "no_warnings": True, "noprogress": True, "noplaylist": True,
         "logger": _QuietLogger(), "windowsfilenames": True,
@@ -40,13 +40,16 @@ def ydl_opts(**extra):
         opts["js_runtimes"] = {"deno": {"path": deno}}
     if ffmpeg:
         opts["ffmpeg_location"] = ffmpeg
-    if s["cookies_browser"]:
-        opts["cookiesfrombrowser"] = (s["cookies_browser"],)
     opts.update(extra)
     return opts
 
 
-def _extract(url, platform, opts, download):
+_COOKIE_TROUBLE = re.compile(r"cookie database|cookies? from|Failed to decrypt|could not find .*cookies|"
+                             r"keyring|App-Bound|Operation not permitted.*Cookies", re.I)
+cookie_notice = {"text": None}
+
+
+def _extract_once(url, platform, opts, download):
     """extract_info with our Threads extractor available. A post with several
     videos (Instagram/X carousels, Threads) comes back as a playlist."""
     with yt_dlp.YoutubeDL(opts) as ydl:
@@ -54,6 +57,33 @@ def _extract(url, platform, opts, download):
             ydl.add_info_extractor(ThreadsIE())
             return ydl.extract_info(url, download=download, ie_key="Threads")
         return ydl.extract_info(url, download=download)
+
+
+def _extract(url, platform, opts, download):
+    """Run with the in-app sign-in, else the chosen browser's cookies. If the
+    cookies themselves can't be loaded, carry on without them: most videos
+    don't need them, and a broken cookie setting must not break every link."""
+    s = settings.load()
+    tmp = account.private_copy()
+    if tmp:
+        with_cookies = {"cookiefile": tmp}
+    elif settings.browser_usable(s["cookies_browser"]):
+        with_cookies = {"cookiesfrombrowser": (s["cookies_browser"],)}
+    else:
+        with_cookies = None
+    try:
+        if with_cookies:
+            try:
+                return _extract_once(url, platform, {**opts, **with_cookies}, download)
+            except Exception as e:
+                if not _COOKIE_TROUBLE.search(str(e)):
+                    raise
+                cookie_notice["text"] = (f"Couldn't read {s['cookies_browser'].title()}'s cookies, so this ran signed out. "
+                                         "Use Settings → Sign in to YouTube instead.")
+        return _extract_once(url, platform, opts, download)
+    finally:
+        if tmp:
+            os.unlink(tmp)
 
 
 # ---------- probe ----------
@@ -94,7 +124,8 @@ def probe(url, item=None):
         raise InputError("No video found at this link.")
 
     summary = summarize(media, encoders(), platform)
-    summary.update(source_url=url, item=item, items=items)
+    summary.update(source_url=url, item=item, items=items, notice=cookie_notice.pop("text", None))
+    cookie_notice["text"] = None
     return summary
 
 

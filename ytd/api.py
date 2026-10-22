@@ -11,7 +11,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import __version__, appupdate, jobs, settings, updater
+from . import __version__, account, appupdate, jobs, settings, updater
 from .formats import InputError
 from .tools import IS_MAC, IS_WIN, NO_WINDOW, encoder_label, encoders, version
 
@@ -120,6 +120,25 @@ def system():
         "ffmpeg": version("ffmpeg"), "ffprobe": version("ffprobe"), "deno": version("deno"),
         "encoders": {k: ({"name": v, "label": encoder_label(v)} if v else None) for k, v in enc.items()},
     }
+
+
+@app.get("/api/account")
+def account_status():
+    return account.status()
+
+
+@app.post("/api/account/signin")
+def account_signin():
+    if not account.open_window:
+        raise HTTPException(400, "Sign-in works in the installed app.")
+    account.open_window()
+    return account.status()
+
+
+@app.post("/api/account/signout")
+def account_signout():
+    account.sign_out()
+    return account.status()
 
 
 @app.get("/api/app-update")

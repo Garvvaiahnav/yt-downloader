@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.3.0
+- Sign in to YouTube inside the app (Settings → YouTube account). Fixes "Sign in to confirm you're not a bot" and age-restricted videos, without reading another browser's cookies.
+- A browser-cookie setting that can't be read no longer breaks downloads; the app carries on signed out and says so.
+- Windows: Chrome, Edge and Brave removed from the cookie options (Windows locks and encrypts their cookies); Firefox still works.
+
 ## 1.2.1
 - Settings shows the installed version next to the update status.
 

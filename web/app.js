@@ -190,7 +190,8 @@ $("#probeForm").addEventListener("submit", async e => {
   } catch (ex) {
     info = null;
     mascot("sad");
-    err.innerHTML = icon("alert") + `<span>${esc(ex.message)}</span>`;
+    err.innerHTML = icon("alert") + `<span>${esc(ex.message)}</span>` +
+      (/Sign in to YouTube/.test(ex.message) && acct?.can_sign_in && !acct.signed_in ? `<button class="btn pri sm" data-signin>Sign in to YouTube</button>` : "");
     err.hidden = false;
   } finally {
     btn.disabled = false;
@@ -224,6 +225,7 @@ function render() {
       </div>
     </div>
   </div>`;
+  if (info.notice) html += `<p class="err warn">${icon("alert")}<span>${esc(info.notice)}</span></p>`;
   if (info.items) {
     html += `<div class="card items"><span class="muted">This post has ${info.items.length} videos</span><div class="chips">${info.items.map(it =>
       `<button class="chip${it.index === info.item ? " on" : ""}" data-item="${it.index}">Video ${it.index}</button>`).join("")}</div></div>`;
@@ -601,6 +603,56 @@ function renderEngine() {
     ${sys.update_available ? `<button class="btn sec sm" data-update>${icon("refresh")}Update ${esc(sys.ytdlp_latest)}</button>` : ""}`;
 }
 
+let acct = null;
+
+async function loadAccount() {
+  try { acct = await api("/api/account"); } catch { return; }
+  renderAccount();
+}
+
+function renderAccount() {
+  const card = $("#acctCard");
+  if (!card || !acct) return;
+  const s = sys.settings;
+  const browsers = sys.browsers.filter(Boolean);
+  card.innerHTML = `
+    <h3>YouTube account</h3>
+    <p>Needed only when YouTube asks to "confirm you're not a bot", and for age-restricted or members-only videos.</p>
+    ${acct.signed_in
+      ? `<div class="acct ok">${icon("check")}<span>Signed in${acct.since ? ` since ${esc(acct.since)}` : ""}.</span><button class="btn sec sm" data-signout>Sign out</button></div>`
+      : acct.can_sign_in
+        ? `<button class="btn pri" data-signin>Sign in to YouTube</button>
+           <p class="muted small" style="margin:8px 0 0">Opens Google's sign-in page in a window of this app. The session stays on this computer.</p>`
+        : `<p class="muted small" style="margin:0">Sign-in is available in the installed app.</p>`}
+    ${browsers.length ? `<details class="adv"><summary>Use a browser's cookies instead</summary>
+      <div class="field"><select id="cookies">${["", ...browsers].map(b => `<option value="${b}" ${b === s.cookies_browser ? "selected" : ""}>${b ? b[0].toUpperCase() + b.slice(1) : "Off"}</option>`).join("")}</select></div>
+      <p class="muted small" style="margin:8px 0 0">${navigator.platform.startsWith("Win") ? "On Windows only Firefox works: Chrome, Edge and Brave lock their cookies." : "macOS asks once for Keychain access; Safari needs Full Disk Access."}</p>
+    </details>` : ""}`;
+}
+
+async function startSignin() {
+  try {
+    await api("/api/account/signin", {});
+    toast("Sign in in the new window. It closes by itself when you're done.");
+    const until = Date.now() + 15 * 60 * 1000;
+    const poll = async () => {
+      await loadAccount();
+      if (acct.signed_in) { toast("Signed in to YouTube"); return; }
+      if (Date.now() < until) setTimeout(poll, 2000);
+    };
+    setTimeout(poll, 2000);
+  } catch (ex) { toast(ex.message); }
+}
+
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-signin],[data-signout]");
+  if (!b) return;
+  if (b.hasAttribute("data-signin")) return startSignin();
+  await api("/api/account/signout", {});
+  toast("Signed out");
+  loadAccount();
+});
+
 function renderSettings() {
   const s = sys.settings;
   const enc = sys.encoders;
@@ -610,11 +662,7 @@ function renderSettings() {
     <h3>Download folder</h3>
         <form class="field" id="dirForm"><input id="dir" value="${esc(s.download_dir)}" spellcheck="false"><button class="btn sec">Save</button></form>
   </div>
-  <div class="card">
-    <h3>Browser cookies</h3>
-    <p>Required for age-restricted and members-only videos. Use a browser signed in to YouTube.</p>
-    <div class="field"><select id="cookies">${sys.browsers.map(b => `<option value="${b}" ${b === s.cookies_browser ? "selected" : ""}>${b ? b[0].toUpperCase() + b.slice(1) : "Off"}</option>`).join("")}</select></div>
-  </div>
+  <div class="card" id="acctCard"></div>
   <div class="card">
     <h3>Engine</h3>
     <dl class="kv">
@@ -633,6 +681,7 @@ function renderSettings() {
     <div><h3>YT Downloader ${esc(sys.version || "")}</h3><p>Made by Garv. Built between chai breaks.</p></div>
   </div>`;
   if (upd) renderUpdate();
+  renderAccount();
 }
 
 $("#settings").addEventListener("submit", async e => {
@@ -745,5 +794,5 @@ document.querySelectorAll(".ri[data-view]").forEach(b => b.addEventListener("cli
 
 renderQueue();
 connect();
-loadSystem().then(loadUpdate).catch(ex => toast(ex.message));
+loadSystem().then(() => { loadUpdate(); loadAccount(); }).catch(ex => toast(ex.message));
 $("#url").focus();

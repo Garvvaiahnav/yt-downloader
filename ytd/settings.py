@@ -4,7 +4,19 @@ import sys
 import threading
 from pathlib import Path
 
-BROWSERS = ["", "chrome", "safari", "firefox", "edge", "brave", "chromium", "opera", "vivaldi"]
+# Chromium browsers on Windows lock their cookie database while open and,
+# since Chrome 127, encrypt it for themselves only; nothing else can read it.
+_CHROMIUM = ["chrome", "edge", "brave", "chromium", "opera", "vivaldi"]
+if sys.platform == "win32":
+    BROWSERS = ["", "firefox"]
+elif sys.platform == "darwin":
+    BROWSERS = ["", "safari", "firefox", *_CHROMIUM]
+else:
+    BROWSERS = ["", "firefox", *_CHROMIUM]
+
+
+def browser_usable(name):
+    return bool(name) and name in BROWSERS
 
 
 def config_dir():
@@ -30,7 +42,10 @@ def load():
         data = json.loads(_FILE.read_text("utf-8"))
     except (OSError, ValueError):
         data = {}
-    return {**_DEFAULTS, **{k: v for k, v in data.items() if k in _DEFAULTS}}
+    data = {**_DEFAULTS, **{k: v for k, v in data.items() if k in _DEFAULTS}}
+    if data["cookies_browser"] not in BROWSERS:  # e.g. "chrome" saved before it was dropped on Windows
+        data["cookies_browser"] = ""
+    return data
 
 
 def save(changes):

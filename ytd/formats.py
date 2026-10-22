@@ -127,29 +127,38 @@ def container_verdict(container, vfam, afam):
     return worst
 
 
-# YouTube's own upload recommendations for SDR H.264 (Mbps), upper end of
-# each range. An editing intermediate should not be starved, so these are the
-# floor we suggest; HEVC gets ~70% for the same picture.
+# Bits each codec needs for the same picture, relative to H.264. Re-encoding
+# can't add quality, so the most an encode is ever offered is the bitrate
+# that *matches* the source in the target codec: a 12 Mbps VP9 stream is
+# worth ~20 Mbps of H.264, and anything above that only makes the file bigger.
+_EFFICIENCY = {"h264": 1.0, "hevc": 0.6, "vp9": 0.6, "av1": 0.45}
+
+# Fallback when a site doesn't report the stream's bitrate: YouTube's upload
+# recommendations for SDR H.264 (Mbps), (<=30 fps, >30 fps).
 _YT_REC = {2160: (45, 68), 1440: (16, 24), 1080: (8, 12), 720: (5, 7.5),
            480: (2.5, 4), 360: (1, 1.5), 240: (0.5, 0.75), 144: (0.3, 0.4)}
 
 
-def recommended_mbps(label_h, fps, codec):
-    keys = sorted(_YT_REC)
-    key = min(keys, key=lambda k: abs(k - label_h))
+def _nice(mbps):
+    return round(mbps, 1) if mbps < 10 else round(mbps)
+
+
+def source_match_mbps(src_kbps, src_fam, target, label_h, fps):
+    """Bitrate in the target codec that keeps the source's quality."""
+    if src_kbps:
+        ratio = _EFFICIENCY.get(target, 1.0) / _EFFICIENCY.get(src_fam, 1.0)
+        return max(0.3, src_kbps / 1000 * ratio)
+    key = min(_YT_REC, key=lambda k: abs(k - (label_h or 720)))
     lo, hi = _YT_REC[key]
-    mbps = hi if (fps or 30) > 30 else lo
-    if label_h >= 1080:
-        mbps *= 1.5  # headroom for a second generation of compression
-    if codec == "hevc":
-        mbps *= 0.7
-    return round(mbps) if mbps >= 2 else round(mbps, 1)
+    return (hi if (fps or 30) > 30 else lo) * _EFFICIENCY.get(target, 1.0)
 
 
-def bitrate_choices(label_h, fps, codec):
-    rec = recommended_mbps(label_h, fps, codec)
-    choices = sorted({round(rec * f, 1) if rec * f < 2 else round(rec * f) for f in (0.5, 1, 1.5, 2)})
-    return rec, choices
+def bitrate_choices(src_kbps, src_fam, target, label_h, fps):
+    """(top, choices): top keeps source quality; the others trade size for
+    quality. Never more than the source is worth."""
+    top = _nice(source_match_mbps(src_kbps, src_fam, target, label_h, fps))
+    choices = sorted({_nice(top * f) for f in (0.5, 0.75)} | {top})
+    return top, choices
 
 
 def _label_height(f):
@@ -210,7 +219,8 @@ def summarize(info, encoders, platform="YouTube"):
                 "kbps": round(f.get("vbr") or f.get("tbr") or 0),
                 "size": _size(f), "ext": f.get("ext"),
                 "protocol": f.get("protocol"),
-                "editor": {c: dict(zip(("rec", "choices"), bitrate_choices(lh or 720, fps, c)))
+                "editor": {c: dict(zip(("rec", "choices"), bitrate_choices(
+                    round(f.get("vbr") or f.get("tbr") or 0), vfamily(f.get("vcodec")), c, lh, fps)))
                            for c in ("h264", "hevc")},
             })
         elif has_a:

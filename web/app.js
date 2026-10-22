@@ -342,7 +342,8 @@ function editorBlock() {
   if (sel.ecodec !== "prores") {
     const e = v.editor[sel.ecodec];
     rates = `<div class="sech" style="margin-top:14px"><h3>Bitrate</h3>${v.kbps ? `<span class="hint">Source ${fmt.kbps(v.kbps)} ${CODEC[v.fam] || v.fam}</span>` : ""}</div>
-      <div class="chips">${e.choices.map(m => `<button class="chip${sel.mbps === m ? " on" : ""}" data-mbps="${m}">${m} Mbps</button>`).join("")}</div>`;
+      <div class="chips">${e.choices.map(m => `<button class="chip${sel.mbps === m ? " on" : ""}" data-mbps="${m}"${m === e.rec ? ' title="Keeps the source\'s quality; more would only make the file bigger"' : ""}>${m} Mbps${m === e.rec ? " <small>source quality</small>" : ""}</button>`).join("")}</div>
+      <p class="muted small" style="margin-top:8px">Re-encoding can't add quality, so the top option matches the source${v.fam !== sel.ecodec && v.kbps ? ` (${CODEC[v.fam] || v.fam} packs more into each bit than ${CODEC[sel.ecodec]}, hence the higher number)` : ""}.</p>`;
   }
   return `
     <div class="sech" style="margin-top:14px"><h3>Format</h3><span class="hint">Constant frame rate · ${enc[sel.ecodec] ? esc(encLabel(enc[sel.ecodec])) : ""}</span></div>

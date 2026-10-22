@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.1
+- Convert-for-editing bitrates now stop at the source's quality. The top option keeps the source quality; higher numbers only made files bigger.
+- yt-dlp 2026.10.21 bundled.
+
 ## 1.6.0
 - Updates install themselves: a new version downloads and is verified in the background, then installs after a 15-second countdown when nothing is downloading. "Later" installs it when you close the app.
 

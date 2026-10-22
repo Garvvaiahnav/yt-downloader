@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.2.1
+- Settings shows the installed version next to the update status.
+
 ## 1.2.0
 - The app now updates itself. Every update is signature-checked and checksum-verified before it installs.
 - Interface uses the mascot's blue; new app icon with the mascot.

@@ -714,7 +714,7 @@ function renderUpdate() {
       <button class="btn pri" data-install style="margin-top:12px">Update and restart</button>`;
   else if (upd.status === "installing" || upd.status === "restarting") body = `<p>Installing…</p>${checkList(upd.checks)}`;
   else if (upd.status === "error") body = `<p class="err" style="margin:0">${esc(upd.error)}</p>${checkList(upd.checks)}`;
-  else body = `<p>You're on the latest version.</p>`;
+  else body = `<p>You're on the latest version (${esc(sys?.version || "")}).</p>`;
   card.innerHTML = `<h3>App updates</h3>${body}
     <p class="muted small" style="margin:10px 0 0">Every update is checked before it installs: release signature, version, file size and SHA-256 checksum${navigator.platform.startsWith("Mac") ? ", and the new app's code signature and identity" : ""}.</p>
     ${["dev", "installing", "restarting"].includes(upd.status) ? "" : `<button class="btn ghost sm" data-check style="margin-top:8px">Check now</button>`}`;

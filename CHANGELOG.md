@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.5.0
+- The version number is now always visible at the top of the app, and the app says it is developed by Garv.
+- New one-line installers for Mac and Windows that avoid the "Video Downloader Not Opened" (Mac) and SmartScreen (Windows) warnings. See the README.
+- The Windows app and installer now show Garv as the publisher in file properties.
+
 ## 1.4.0
 - Renamed to Video Downloader. Your settings and sign-in carry over.
 - New downloads go to a "Video Downloader" folder (Movies on Mac, Downloads on Windows) unless you picked a folder in Settings.

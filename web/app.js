@@ -599,7 +599,8 @@ async function loadSystem() {
 }
 
 function renderEngine() {
-  $("#engine").innerHTML = `<span class="pill" title="yt-dlp version">yt-dlp ${esc(sys.ytdlp)}</span>
+  $("#engine").innerHTML = `<span class="pill acc" title="Video Downloader version, developed by Garv">v${esc(sys.version)}</span>
+    <span class="pill" title="yt-dlp version">yt-dlp ${esc(sys.ytdlp)}</span>
     ${sys.update_available ? `<button class="btn sec sm" data-update>${icon("refresh")}Update ${esc(sys.ytdlp_latest)}</button>` : ""}`;
 }
 
@@ -678,7 +679,7 @@ function renderSettings() {
   <div class="card" id="updCard"></div>
   <div class="card about">
     <img src="mascot-still.png" alt="" width="44" height="65">
-    <div><h3>Video Downloader ${esc(sys.version || "")}</h3><p>Made by Garv. Built between chai breaks.</p></div>
+    <div><h3>Video Downloader ${esc(sys.version || "")}</h3><p>Developed by Garv. Built between chai breaks.</p></div>
   </div>`;
   if (upd) renderUpdate();
   renderAccount();

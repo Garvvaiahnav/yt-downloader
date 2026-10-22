@@ -31,6 +31,31 @@ a = Analysis(
     excludes=["tkinter", "PyQt5", "PyQt6", "PySide2", "PySide6", "qtpy", "gi", "IPython", "matplotlib", "numpy"],
     noarchive=False,
 )
+version_file = None
+if sys.platform == "win32":
+    # File properties (Details tab) name the publisher; an exe with no version
+    # info and no signature looks far more suspicious to SmartScreen/Defender.
+    import tempfile
+    parts = [int(x) for x in VERSION.split(".")[:3]]
+    nums = tuple(parts + [0] * (4 - len(parts)))
+    strings = {
+        "CompanyName": "Garv", "FileDescription": NAME, "FileVersion": VERSION, "InternalName": NAME,
+        "LegalCopyright": "Developed by Garv", "OriginalFilename": NAME + ".exe",
+        "ProductName": NAME, "ProductVersion": VERSION,
+    }
+    rows = ",\n          ".join(f"StringStruct({k!r}, {v!r})" for k, v in strings.items())
+    # PyInstaller's documented version-file format (evaluated by PyInstaller, not imported here).
+    version_file = str(Path(tempfile.mkdtemp()) / "version_info.txt")
+    Path(version_file).write_text(f"""VSVersionInfo(
+  ffi=FixedFileInfo(filevers={nums}, prodvers={nums}, mask=0x3f, flags=0x0, OS=0x40004, fileType=0x1, subtype=0x0, date=(0, 0)),
+  kids=[
+    StringFileInfo([StringTable('040904B0', [
+          {rows}])]),
+    VarFileInfo([VarStruct('Translation', [1033, 1200])]),
+  ],
+)
+""", "utf-8")
+
 pyz = PYZ(a.pure)
 exe = EXE(
     pyz, a.scripts, [],
@@ -39,6 +64,7 @@ exe = EXE(
     console=False,
     upx=False,
     icon=str(ROOT / "packaging" / ("icon.icns" if IS_MAC else "icon.ico")),
+    version=version_file,
 )
 coll = COLLECT(exe, a.binaries, a.datas, name=NAME, upx=False)
 
@@ -53,6 +79,6 @@ if IS_MAC:
             "CFBundleVersion": VERSION,
             "LSMinimumSystemVersion": "11.0",
             "NSHighResolutionCapable": True,
-            "NSHumanReadableCopyright": "Made by Garv",
+            "NSHumanReadableCopyright": "Developed by Garv",
         },
     )

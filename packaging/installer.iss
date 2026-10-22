@@ -11,6 +11,13 @@ AppId={{6F1C2B7A-4E2D-4C8B-9F3A-7D5E1A2B3C4D}
 AppName={#AppName}
 AppVersion={#AppVersion}
 AppPublisher=Garv
+AppPublisherURL=https://github.com/Garvvaiahnav/yt-downloader
+AppCopyright=Developed by Garv
+VersionInfoVersion={#AppVersion}
+VersionInfoCompany=Garv
+VersionInfoDescription={#AppName} Setup
+VersionInfoProductName={#AppName}
+VersionInfoCopyright=Developed by Garv
 DefaultDirName={localappdata}\Programs\{#AppName}
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
@@ -53,6 +60,6 @@ Filename: "{app}\{#AppName}.exe"; Flags: nowait; Check: WizardSilent
 
 [Messages]
 WelcomeLabel1=Video Downloader
-WelcomeLabel2=Made by Garv.%n%nDownloads videos from YouTube, Instagram, Facebook, X, Threads and TikTok, and converts them so Premiere Pro and After Effects actually open them.%n%nBuilt between chai breaks. It downloads videos; it doesn't judge your watch history.
+WelcomeLabel2=Developed by Garv.%n%nDownloads videos from YouTube, Instagram, Facebook, X, Threads and TikTok, and converts them so Premiere Pro and After Effects actually open them.%n%nBuilt between chai breaks. It downloads videos; it doesn't judge your watch history.
 FinishedHeadingLabel=Done. Go make something good.
-FinishedLabel=Video Downloader is installed. Made by Garv; the mascot did the heavy lifting.
+FinishedLabel=Video Downloader is installed. Developed by Garv; the mascot did the heavy lifting.

@@ -42,7 +42,7 @@ def wizard(scale):
     glow(img, w // 2, int(h * 0.55), int(w * 0.75))
     paste_mascot(img, int(h * 0.48), w / 2, h * 0.78)
     d = ImageDraw.Draw(img)
-    d.text((w / 2, h * 0.86), "Made by Garv", font=font(15 * scale, True), fill=(250, 250, 250), anchor="mm")
+    d.text((w / 2, h * 0.86), "Developed by Garv", font=font(15 * scale, True), fill=(250, 250, 250), anchor="mm")
     img.convert("RGB").save(HERE / f"wizard{'@2x' if scale == 2 else ''}.bmp")
 
 
@@ -64,7 +64,7 @@ def dmg(scale):
     d.polygon([(392 * scale, y), (376 * scale, y - 10 * scale), (376 * scale, y + 10 * scale)], fill=BLUE + (255,))
     paste_mascot(img, 84 * scale, 320 * scale, y - 8 * scale)
     d.text((w / 2, 40 * scale), "Drag Video Downloader into Applications", font=font(17 * scale), fill=(250, 250, 250), anchor="mm")
-    d.text((w / 2, 330 * scale), "Made by Garv", font=font(15 * scale, True), fill=(250, 250, 250), anchor="mm")
+    d.text((w / 2, 330 * scale), "Developed by Garv", font=font(15 * scale, True), fill=(250, 250, 250), anchor="mm")
     d.text((w / 2, 354 * scale), "Built between chai breaks. It downloads videos; it doesn't judge your watch history.",
            font=font(11 * scale), fill=(142, 142, 152), anchor="mm")
     img.convert("RGB").save(HERE / f"dmg-background{'@2x' if scale == 2 else ''}.png")

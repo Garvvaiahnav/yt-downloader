@@ -56,10 +56,17 @@ Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppName}.exe"; Tasks: deskt
 [Run]
 Filename: "{app}\{#AppName}.exe"; Description: "Open {#AppName}"; Flags: nowait postinstall skipifsilent
 ; In-app updates install silently; reopen the app afterwards.
-Filename: "{app}\{#AppName}.exe"; Flags: nowait; Check: WizardSilent
+Filename: "{app}\{#AppName}.exe"; Flags: nowait; Check: WizardSilent and ShouldRelaunch
 
 [Messages]
 WelcomeLabel1=Video Downloader
 WelcomeLabel2=Developed by Garv.%n%nDownloads videos from YouTube, Instagram, Facebook, X, Threads and TikTok, and converts them so Premiere Pro and After Effects actually open them.%n%nBuilt between chai breaks. It downloads videos; it doesn't judge your watch history.
 FinishedHeadingLabel=Done. Go make something good.
 FinishedLabel=Video Downloader is installed. Developed by Garv; the mascot did the heavy lifting.
+
+[Code]
+// The app passes /relaunch=0 when it applies an update on quit.
+function ShouldRelaunch(): Boolean;
+begin
+  Result := ExpandConstant('{param:relaunch|1}') <> '0';
+end;

@@ -11,7 +11,9 @@ The app trusts nothing it downloads until:
   4. (macOS) the app inside the DMG passes codesign --verify and its bundle
      id and version match what the manifest promised.
 
-Only then is it installed, and the app restarts into the new version."""
+It is fetched and checked in the background as soon as it appears, then
+installed when the app is idle (after a short countdown the user can
+postpone) or, at the latest, when the app is closed."""
 
 import base64
 import hashlib
@@ -78,7 +80,7 @@ def check(force=False):
     if not FROZEN and not os.environ.get("YTD_UPDATE_FEED"):
         _set(status="dev", error=None)
         return state
-    if state["status"] in ("installing", "restarting"):
+    if state["status"] in ("downloading", "ready", "restarting"):
         return state
     if not force and state["checked_at"] and time.time() - state["checked_at"] < 60:
         return state
@@ -93,6 +95,8 @@ def check(force=False):
             _set(status="available", error=None, available={
                 "version": m["version"], "notes": m.get("notes", ""), "published": m.get("published"),
                 "size": asset["size"], "asset": asset})
+            if FROZEN:
+                prepare()  # fetch and verify now; it installs itself when the app is idle
         else:
             _set(status="current", available=None, error=None)
     except ValueError:
@@ -143,7 +147,8 @@ def _app_bundle():
     return Path(sys.executable).resolve().parents[2]
 
 
-def _install_mac(dmg, version, work):
+def _stage_mac(dmg, version, work):
+    """Unpack and check the new app; returns its path, ready to swap in."""
     mnt = work / "mnt"
     mnt.mkdir()
     subprocess.run(["hdiutil", "attach", "-nobrowse", "-readonly", "-mountpoint", str(mnt), str(dmg)],
@@ -155,12 +160,16 @@ def _install_mac(dmg, version, work):
         subprocess.run(["ditto", str(apps[0]), str(new)], check=True)
     finally:
         subprocess.run(["hdiutil", "detach", str(mnt), "-quiet"], capture_output=True)
+    dmg.unlink(missing_ok=True)
     sig = subprocess.run(["codesign", "--verify", "--deep", "--strict", str(new)], capture_output=True, text=True)
     _step("Code signature", sig.returncode == 0, sig.stderr.strip()[-120:] or "valid")
     info = plistlib.loads((new / "Contents" / "Info.plist").read_bytes())
     _step("App identity", info.get("CFBundleIdentifier") == BUNDLE_ID, info.get("CFBundleIdentifier", "?"))
     _step("App version", info.get("CFBundleShortVersionString") == version, info.get("CFBundleShortVersionString", "?"))
+    return new
 
+
+def _swap_mac(new, work, relaunch):
     old = _app_bundle()
     # Same folder, the new release's name (handles the YT -> Video Downloader rename).
     target = old.parent / new.name
@@ -169,7 +178,7 @@ def _install_mac(dmg, version, work):
 while kill -0 {os.getpid()} 2>/dev/null; do sleep 0.2; done
 mv "{old}" "{old}.old" && ditto "{new}" "{target}" && rm -rf "{old}.old" \\
   || {{ rm -rf "{target}"; mv "{old}.old" "{old}"; }}
-open "{target}"
+{f'open "{target}"' if relaunch else ""}
 rm -rf "{work}"
 """)
     script.chmod(0o700)
@@ -177,29 +186,31 @@ rm -rf "{work}"
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
-def _install_win(exe, work):
-    with open(exe, "rb") as f:
-        _step("Installer format", f.read(2) == b"MZ", "Windows executable")
-    # The installer closes this app, replaces it, and relaunches it.
-    subprocess.Popen([str(exe), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS"],
-                     creationflags=NO_WINDOW | subprocess.DETACHED_PROCESS, close_fds=True)
+def _run_win_installer(exe, relaunch):
+    # The installer closes this app, replaces it and, unless told not to, reopens it.
+    args = [str(exe), "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS"]
+    if not relaunch:
+        args.append("/relaunch=0")
+    subprocess.Popen(args, creationflags=NO_WINDOW | subprocess.DETACHED_PROCESS, close_fds=True)
 
 
-def install():
-    """Download, verify and install the available update, then quit so the
-    new version can start. Runs in a background thread."""
+_staged = {}  # version, path, work: a verified update waiting to be applied
+
+
+def prepare():
+    """Download and verify the available update in the background. Nothing is
+    replaced yet; status becomes "ready" once every check has passed."""
     with _lock:
-        if state["status"] in ("installing", "restarting") or not state["available"]:
+        if state["status"] in ("downloading", "ready", "restarting") or not state["available"]:
             return
-        upd = state["available"]
-        state.update(status="installing", checks=[], progress=0.0, error=None)
+        state.update(status="downloading", checks=[], progress=0.0, error=None)
 
     def run():
         work = None
         try:
             config_dir().mkdir(parents=True, exist_ok=True)
             work = Path(tempfile.mkdtemp(prefix="ytd-update-", dir=config_dir()))
-            # Re-fetch and re-verify: never act on a manifest older than this click.
+            # Re-fetch and re-verify: never act on a manifest older than this moment.
             raw = _get(f"{FEED}/manifest.json")
             verify_manifest(raw, _get(f"{FEED}/manifest.sig").decode())
             m = json.loads(raw)
@@ -212,18 +223,47 @@ def install():
                 # A dev run has no installed app to replace: stop after verifying.
                 _step("Install", False, "dev run: verified only, nothing installed")
             if IS_MAC:
-                _install_mac(file, m["version"], work)
+                path = _stage_mac(file, m["version"], work)
             else:
-                _install_win(file, work)
-            _set(status="restarting", progress=1.0)
-            time.sleep(1.5)  # let the UI show the result
-            os._exit(0)
+                with open(file, "rb") as f:
+                    _step("Installer format", f.read(2) == b"MZ", "Windows executable")
+                path = file
+            _staged.update(version=m["version"], path=path, work=work)
+            _set(status="ready", progress=1.0)
         except ValueError:
             _set(status="error", error="Update rejected: the release signature does not match. Nothing was installed.")
         except Exception as e:
             _set(status="error", error=f"Update stopped, nothing was installed. {e}")
         finally:
-            if work and state["status"] != "restarting":
+            if work and state["status"] != "ready":
                 shutil.rmtree(work, ignore_errors=True)
 
-    threading.Thread(target=run, daemon=True, name="update-install").start()
+    threading.Thread(target=run, daemon=True, name="update-prepare").start()
+
+
+def apply(relaunch=True):
+    """Swap in the verified update and quit. relaunch=False when the user is
+    closing the app anyway."""
+    if state["status"] != "ready" or not _staged:
+        return False
+    if IS_MAC:
+        _swap_mac(_staged["path"], _staged["work"], relaunch)
+    else:
+        _run_win_installer(_staged["path"], relaunch)
+    _set(status="restarting")
+    if relaunch:
+        threading.Timer(1.2, os._exit, [0]).start()  # let the UI show "Restarting"
+    return True
+
+
+def install():
+    """The "Update now" button: apply if ready, else fetch then apply."""
+    if state["status"] == "ready":
+        return apply()
+    prepare()
+
+    def wait_then_apply():
+        while state["status"] == "downloading":
+            time.sleep(0.5)
+        apply()
+    threading.Thread(target=wait_then_apply, daemon=True).start()

@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.6.0
+- Updates install themselves: a new version downloads and is verified in the background, then installs after a 15-second countdown when nothing is downloading. "Later" installs it when you close the app.
+
 ## 1.5.0
 - The version number is now always visible at the top of the app, and the app says it is developed by Garv.
 - New one-line installers for Mac and Windows that avoid the "Video Downloader Not Opened" (Mac) and SmartScreen (Windows) warnings. See the README.

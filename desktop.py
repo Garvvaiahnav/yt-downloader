@@ -100,6 +100,7 @@ def main():
         webbrowser.open(url)
         while True:
             time.sleep(3600)
+    appupdate.apply(relaunch=False)  # a verified update left waiting goes in on quit
     server.should_exit = True
 
 

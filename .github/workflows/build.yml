@@ -111,3 +111,46 @@ jobs:
           import json; print(json.load(open("rel/manifest.json"))["notes"])
           PY
           gh release create "$GITHUB_REF_NAME" rel/* --title "Video Downloader ${GITHUB_REF_NAME#v}" --notes-file notes.md
+
+  install-check:
+    # After a release: run the one-line installers exactly as users do and
+    # check the freshly published version starts.
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [release]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Install with install.ps1
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          irm "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/install.ps1" | iex
+          $exe = "$env:LOCALAPPDATA\Programs\Video Downloader\Video Downloader.exe"
+          if (-not (Test-Path $exe)) { throw "not installed: $exe" }
+          Get-Process "Video Downloader" -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Process $exe
+          $want = "${{ github.ref_name }}".TrimStart("v"); $got = $null
+          foreach ($i in 1..60) {
+            Start-Sleep 2
+            foreach ($port in 8765..8775) { try { $got = (Invoke-RestMethod "http://127.0.0.1:$port/api/system" -TimeoutSec 2).version; break } catch {} }
+            if ($got) { break }
+          }
+          "installed version: $got"
+          if ($got -ne $want) { throw "expected $want, got $got" }
+      - name: Install with install.sh
+        if: runner.os == 'macOS'
+        run: |
+          curl -fsSL "https://raw.githubusercontent.com/${{ github.repository }}/${{ github.ref_name }}/install.sh" | VD_INSTALL_DIR="$RUNNER_TEMP" VD_NO_LAUNCH=1 bash
+          APP="$RUNNER_TEMP/Video Downloader.app"
+          test -z "$(xattr -p com.apple.quarantine "$APP" 2>/dev/null)" || { echo "app is quarantined"; exit 1; }
+          "$APP/Contents/MacOS/Video Downloader" &
+          want="${GITHUB_REF_NAME#v}"
+          for i in $(seq 1 60); do
+            for port in $(seq 8765 8775); do
+              got=$(curl -s "http://127.0.0.1:$port/api/system" | python3 -c "import json,sys;print(json.load(sys.stdin)['version'])" 2>/dev/null) && break 2
+            done; sleep 2
+          done
+          echo "installed version: $got"; test "$got" = "$want"

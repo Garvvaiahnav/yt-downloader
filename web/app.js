@@ -503,7 +503,7 @@ const openVerify = new Set();
 
 function connect() {
   const es = new EventSource("/api/events");
-  es.onmessage = e => { jobs = JSON.parse(e.data); renderQueue(); };
+  es.onmessage = e => { jobs = JSON.parse(e.data); renderQueue(); renderUpdate(); };
   es.onerror = () => { es.close(); setTimeout(connect, 2000); };
 }
 
@@ -731,7 +731,30 @@ async function loadUpdate() {
   try { upd = await api("/api/app-update"); } catch { return; }
   renderUpdate();
   clearTimeout(updTimer);
-  updTimer = setTimeout(loadUpdate, ["installing", "restarting"].includes(upd.status) ? 500 : 60000);
+  updTimer = setTimeout(loadUpdate, ["downloading", "restarting"].includes(upd.status) ? 500 : 60000);
+}
+
+// A verified update installs itself once nothing is downloading: a short
+// countdown the user can stop ("Later" = install when the app is closed).
+const COUNTDOWN = 15;
+let updLater = false, updLeft = null, updTick = null;
+
+function busy() { return jobs.some(j => !["done", "error", "cancelled"].includes(j.status)); }
+
+function updCountdown() {
+  if (upd?.status !== "ready" || updLater || busy()) { clearInterval(updTick); updTick = null; updLeft = null; return; }
+  if (updTick) return;
+  updLeft = COUNTDOWN;
+  updTick = setInterval(async () => {
+    if (busy() || updLater) return updCountdown();
+    updLeft -= 1;
+    if (updLeft <= 0) {
+      clearInterval(updTick); updTick = null;
+      upd = await api("/api/app-update/install", {}).catch(() => upd);
+      return loadUpdate();
+    }
+    renderUpdate();
+  }, 1000);
 }
 
 function checkList(checks) {
@@ -740,41 +763,54 @@ function checkList(checks) {
 }
 
 function renderUpdate() {
+  if (!upd) return;
+  updCountdown();
   const bar = $("#updateBar");
-  const a = upd.available;
-  if (upd.status === "available" && a) {
-    bar.innerHTML = `${icon("refresh")}<span><b>Update ${esc(a.version)} is ready.</b> ${esc(a.notes.split("\n")[0].replace(/^- /, ""))}</span>
-      <button class="btn sec sm" data-view-go="settings">What's new</button><button class="btn pri sm" data-install>Update and restart</button>`;
-  } else if (upd.status === "installing" || upd.status === "restarting") {
+  const a = upd.available, v = a ? esc(a.version) : "";
+  const first = a ? esc(a.notes.split("\n")[0].replace(/^- /, "")) : "";
+  let show = true;
+  if (upd.status === "available" || upd.status === "downloading") {
     const pct = Math.round(upd.progress * 100);
-    bar.innerHTML = `${icon("refresh")}<span><b>${upd.status === "restarting" ? "Verified. Restarting…" : `Updating… ${pct}%`}</b></span>
-      <div class="bar" style="flex:1;max-width:220px"><i style="width:${pct}%"></i></div>`;
+    bar.innerHTML = `${icon("refresh")}<span><b>Getting version ${v}…</b> ${first}</span>
+      <div class="bar" style="flex:1;max-width:200px"><i style="width:${pct}%"></i></div>`;
+  } else if (upd.status === "ready" && updLater) {
+    bar.innerHTML = `${icon("refresh")}<span>Version ${v} is verified and installs when you close the app.</span>
+      <button class="btn pri sm" data-install>Update now</button>`;
+  } else if (upd.status === "ready" && busy()) {
+    bar.innerHTML = `${icon("refresh")}<span><b>Version ${v} is ready.</b> It installs when your downloads finish.</span>
+      <button class="btn sec sm" data-later>Later</button>`;
+  } else if (upd.status === "ready") {
+    bar.innerHTML = `${icon("refresh")}<span><b>Updating to ${v} in ${updLeft ?? COUNTDOWN}s</b> ${first}</span>
+      <button class="btn sec sm" data-later>Later</button><button class="btn pri sm" data-install>Update now</button>`;
+  } else if (upd.status === "restarting") {
+    bar.innerHTML = `${icon("check")}<span><b>Verified. Restarting into ${v || "the new version"}…</b></span>`;
   } else if (upd.status === "error") {
     bar.innerHTML = `${icon("alert")}<span>${esc(upd.error)}</span><button class="btn sec sm" data-dismiss>Dismiss</button>`;
-  }
-  bar.hidden = !["available", "installing", "restarting", "error"].includes(upd.status) || bar.dataset.dismissed === upd.status;
+  } else show = false;
+  bar.hidden = !show || bar.dataset.dismissed === upd.status;
   bar.className = "upbar" + (upd.status === "error" ? " bad" : "");
 
   const card = $("#updCard");
   if (!card) return;
   let body;
   if (upd.status === "dev") body = `<p>Updates apply to the installed app.</p>`;
-  else if (upd.status === "available") body = `<p><b>${esc(a.version)}</b> is available (${fmt.bytes(a.size)}).</p>
-      <div class="notes">${esc(a.notes).replace(/^- /gm, "• ").replace(/\n/g, "<br>")}</div>
-      <button class="btn pri" data-install style="margin-top:12px">Update and restart</button>`;
-  else if (upd.status === "installing" || upd.status === "restarting") body = `<p>Installing…</p>${checkList(upd.checks)}`;
+  else if (a && ["available", "downloading", "ready"].includes(upd.status)) body = `<p><b>Version ${v}</b> (${fmt.bytes(a.size)}) ${upd.status === "ready" ? "is verified and ready." : "is downloading…"}</p>
+      <div class="notes">${esc(a.notes).replace(/^- /gm, "• ").replace(/\n/g, "<br>")}</div>${checkList(upd.checks)}
+      ${upd.status === "ready" ? `<button class="btn pri" data-install style="margin-top:12px">Update now</button>` : ""}`;
+  else if (upd.status === "restarting") body = `<p>Restarting…</p>${checkList(upd.checks)}`;
   else if (upd.status === "error") body = `<p class="err" style="margin:0">${esc(upd.error)}</p>${checkList(upd.checks)}`;
   else body = `<p>You're on the latest version (${esc(sys?.version || "")}).</p>`;
   card.innerHTML = `<h3>App updates</h3>${body}
-    <p class="muted small" style="margin:10px 0 0">Every update is checked before it installs: release signature, version, file size and SHA-256 checksum${navigator.platform.startsWith("Mac") ? ", and the new app's code signature and identity" : ""}.</p>
-    ${["dev", "installing", "restarting"].includes(upd.status) ? "" : `<button class="btn ghost sm" data-check style="margin-top:8px">Check now</button>`}`;
+    <p class="muted small" style="margin:10px 0 0">Updates download and install by themselves. Each one is checked first: release signature, version, file size and SHA-256 checksum${navigator.platform.startsWith("Mac") ? ", and the new app's code signature and identity" : ""}.</p>
+    ${["dev", "downloading", "restarting"].includes(upd.status) ? "" : `<button class="btn ghost sm" data-check style="margin-top:8px">Check now</button>`}`;
 }
 
 document.addEventListener("click", async e => {
-  const b = e.target.closest("[data-install],[data-check],[data-dismiss],[data-view-go]");
+  const b = e.target.closest("[data-install],[data-check],[data-dismiss],[data-view-go],[data-later]");
   if (!b) return;
   if (b.dataset.viewGo) return document.querySelector(`.ri[data-view="${b.dataset.viewGo}"]`).click();
   if (b.hasAttribute("data-dismiss")) { $("#updateBar").dataset.dismissed = upd.status; $("#updateBar").hidden = true; return; }
+  if (b.hasAttribute("data-later")) { updLater = true; return renderUpdate(); }
   b.disabled = true;
   try {
     upd = await api(b.hasAttribute("data-install") ? "/api/app-update/install" : "/api/app-update/check", {});

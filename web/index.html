@@ -31,6 +31,17 @@
       <div class="cols">
         <div class="left">
           <div class="perch"><img id="mascot" src="mascot.webp" alt="" width="68" height="100" draggable="false"></div>
+          <div class="seg modes" role="tablist">
+            <button data-mode="single" class="on">Single link</button>
+            <button data-mode="bulk">Bulk</button>
+          </div>
+          <div id="bulkPanel" class="card bulk" hidden>
+            <textarea id="bulkUrls" spellcheck="false" placeholder="One link per line. A YouTube playlist link adds every video in it."></textarea>
+            <div class="blk"><div class="sech"><h3>Max resolution</h3></div><div class="chips" id="bulkRes"></div></div>
+            <div class="blk"><div class="sech"><h3>Output</h3></div><div class="chips" id="bulkMode"></div></div>
+            <div class="go"><div class="sum"><b id="bulkSum"></b><span id="bulkState"></span></div>
+              <button class="btn pri" id="bulkGo"></button></div>
+          </div>
           <form id="probeForm" class="card composer" autocomplete="off">
             <input id="url" type="text" inputmode="url" spellcheck="false" placeholder="Paste a YouTube, Instagram, Facebook, X, Threads or TikTok link" aria-label="Video link">
             <button class="btn pri" id="probeBtn" type="submit">Fetch</button>

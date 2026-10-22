@@ -11,7 +11,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import __version__, account, appupdate, jobs, native, settings, updater
+from . import __version__, account, appupdate, bulk, jobs, native, settings, updater
 from .formats import InputError
 from .tools import IS_MAC, IS_WIN, NO_WINDOW, encoder_label, encoders, version
 
@@ -121,6 +121,17 @@ def system():
         "ffmpeg": version("ffmpeg"), "ffprobe": version("ffprobe"), "deno": version("deno"),
         "encoders": {k: ({"name": v, "label": encoder_label(v)} if v else None) for k, v in enc.items()},
     }
+
+
+@app.post("/api/bulk")
+async def bulk_start(body: dict):
+    preset = {"mode": body.get("mode"), "max_h": body.get("max_h"), "folder": body.get("folder")}
+    return await asyncio.to_thread(bulk.start, body.get("urls") or [], preset)
+
+
+@app.get("/api/bulk")
+def bulk_state():
+    return bulk.state
 
 
 @app.post("/api/pick-folder")

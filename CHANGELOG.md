@@ -1,5 +1,8 @@
 # Changelog
 
+## 1.8.0
+- Bulk downloads: paste many links (or a YouTube playlist), pick a max resolution and an output (Original, Premiere-ready H.264, ProRes 422, M4A or MP3), and everything is queued. Links that fail show up in Downloads with the reason.
+
 ## 1.7.0
 - Settings → Download folder: Choose… opens the system folder picker.
 - New option: "Ask every time" picks a folder for each download; "Always save here" keeps one folder.

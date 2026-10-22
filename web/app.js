@@ -765,6 +765,77 @@ document.addEventListener("click", async e => {
   }
 });
 
+/* ---------------- bulk ----------------
+   Many links (or a playlist) with one preset; the server picks streams the
+   way a single download would by default and queues them all. */
+
+const BULK_RES = [[null, "Best"], [2160, "4K"], [1080, "1080p"], [720, "720p"]];
+const BULK_MODES = [["original", "Original", "Best stream, no re-encode"],
+                    ["h264", "Premiere-ready H.264", "Converted at source quality"],
+                    ["prores", "ProRes 422", "Best for After Effects, large files"],
+                    ["m4a", "Audio M4A", "Audio only"], ["mp3", "Audio MP3", "Audio only, 320 kbps"]];
+const bulk = { maxH: null, mode: "original" };
+let bulkTimer = null;
+
+function bulkLinks() {
+  return [...new Set($("#bulkUrls").value.split(/\s+/).map(x => x.trim()).filter(x => /^(https?:\/\/|www\.|youtu)/i.test(x)))];
+}
+
+function renderBulk() {
+  $("#bulkRes").innerHTML = BULK_RES.map(([h, l]) => `<button class="chip${bulk.maxH === h ? " on" : ""}" data-bres="${h ?? ""}">${l}</button>`).join("");
+  $("#bulkMode").innerHTML = BULK_MODES.map(([m, l, t]) => `<button class="chip${bulk.mode === m ? " on" : ""}" data-bmode="${m}" title="${t}">${l}</button>`).join("");
+  const n = bulkLinks().length;
+  $("#bulkSum").textContent = n ? `${n} link${n > 1 ? "s" : ""} · ${BULK_MODES.find(x => x[0] === bulk.mode)[1]}${["original", "h264", "prores"].includes(bulk.mode) ? ` · ${BULK_RES.find(x => x[0] === bulk.maxH)[1]}` : ""}` : "Paste links above";
+  const go = $("#bulkGo");
+  go.innerHTML = `${icon("download")}Download all`;
+  go.disabled = !n;
+}
+
+async function pollBulk() {
+  clearTimeout(bulkTimer);
+  const st = await api("/api/bulk").catch(() => null);
+  if (!st) return;
+  $("#bulkState").textContent = st.running ? `Adding ${st.done} of ${st.total}…${st.failed ? ` ${st.failed} failed` : ""}`
+    : st.total ? `Added ${st.done - st.failed} of ${st.total}${st.failed ? `, ${st.failed} failed (see Downloads)` : ""}` : "";
+  if (st.running) bulkTimer = setTimeout(pollBulk, 1000);
+  else mascot("hop");
+}
+
+document.querySelectorAll(".modes [data-mode]").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll(".modes [data-mode]").forEach(x => x.classList.toggle("on", x === b));
+  const isBulk = b.dataset.mode === "bulk";
+  $("#bulkPanel").hidden = !isBulk;
+  $("#probeForm").hidden = isBulk;
+  $("#picker").hidden = isBulk;
+  $("#probeErr").hidden = true;
+  if (isBulk) { renderBulk(); $("#bulkUrls").focus(); }
+}));
+
+$("#bulkUrls").addEventListener("input", renderBulk);
+
+$("#bulkPanel").addEventListener("click", async e => {
+  const b = e.target.closest("button");
+  if (!b || b.disabled) return;
+  if ("bres" in b.dataset) { bulk.maxH = b.dataset.bres ? Number(b.dataset.bres) : null; return renderBulk(); }
+  if (b.dataset.bmode) { bulk.mode = b.dataset.bmode; return renderBulk(); }
+  if (b.id !== "bulkGo") return;
+  const body = { urls: bulkLinks(), mode: bulk.mode, max_h: bulk.maxH };
+  if (sys?.settings.ask_folder) {
+    const folder = await askFolder();
+    if (!folder) return;
+    body.folder = folder;
+  }
+  b.disabled = true;
+  mascot("jump");
+  try {
+    await api("/api/bulk", body);
+    $("#bulkUrls").value = "";
+    renderBulk();
+    pollBulk();
+  } catch (ex) { toast(ex.message); mascot("sad"); }
+  b.disabled = false;
+});
+
 /* ---------------- app updates ----------------
    The server checks GitHub on launch and every few hours, verifies the
    release signature, and reports here. Installing is always a click. */

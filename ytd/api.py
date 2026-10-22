@@ -11,7 +11,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import __version__, account, appupdate, jobs, settings, updater
+from . import __version__, account, appupdate, jobs, native, settings, updater
 from .formats import InputError
 from .tools import IS_MAC, IS_WIN, NO_WINDOW, encoder_label, encoders, version
 
@@ -113,6 +113,7 @@ def system():
     return {
         "version": __version__,
         "settings": settings.load(),
+        "native_picker": native.pick_folder is not None,
         "browsers": settings.BROWSERS,
         "ytdlp": current,
         "ytdlp_latest": _latest["version"],
@@ -120,6 +121,15 @@ def system():
         "ffmpeg": version("ffmpeg"), "ffprobe": version("ffprobe"), "deno": version("deno"),
         "encoders": {k: ({"name": v, "label": encoder_label(v)} if v else None) for k, v in enc.items()},
     }
+
+
+@app.post("/api/pick-folder")
+def pick_folder(body: dict):
+    """Native folder chooser. Blocks until the user picks or cancels."""
+    if not native.pick_folder:
+        raise HTTPException(400, "The folder picker works in the installed app; type the path instead.")
+    path = native.pick_folder(body.get("start") or settings.load()["download_dir"])
+    return {"path": path}
 
 
 @app.get("/api/account")

@@ -65,7 +65,7 @@ def dmg(scale):
     paste_mascot(img, 84 * scale, 320 * scale, y - 8 * scale)
     d.text((w / 2, 40 * scale), "Drag Video Downloader into Applications", font=font(17 * scale), fill=(250, 250, 250), anchor="mm")
     d.text((w / 2, 330 * scale), "Developed by Garv", font=font(15 * scale, True), fill=(250, 250, 250), anchor="mm")
-    d.text((w / 2, 354 * scale), "Built between chai breaks. It downloads videos; it doesn't judge your watch history.",
+    d.text((w / 2, 354 * scale), "It downloads videos; it doesn't judge your watch history.",
            font=font(11 * scale), fill=(142, 142, 152), anchor="mm")
     img.convert("RGB").save(HERE / f"dmg-background{'@2x' if scale == 2 else ''}.png")
 

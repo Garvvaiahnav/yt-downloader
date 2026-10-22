@@ -88,8 +88,15 @@ def main():
     from ytd import account
     account.open_window = open_signin
 
-    webview.create_window(TITLE, url, width=1320, height=880, min_size=(760, 560),
-                          background_color="#0F0F11")
+    main_window = webview.create_window(TITLE, url, width=1320, height=880, min_size=(760, 560),
+                                        background_color="#0F0F11")
+
+    from ytd import native
+
+    def pick_folder(start):
+        picked = main_window.create_file_dialog(webview.FileDialog.FOLDER, directory=start)
+        return picked[0] if picked else None
+    native.pick_folder = pick_folder
     try:
         # WKWebView's stock user agent has no Safari version, and Google turns
         # such "embedded" browsers away at sign-in; present as Safari.

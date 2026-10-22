@@ -150,6 +150,7 @@ class Job:
         self.cancel = threading.Event()
         self.proc = None
         self.work = None
+        self.dest = _dest_folder(req.get("folder"))
         self.created = time.time()
         self.finished = None
         self.label, self.expect, self.total_bytes = _describe(req, summary)
@@ -165,6 +166,19 @@ class Job:
             "error": self.error, "verify": self.verify,
             "created": self.created, "finished": self.finished,
         }
+
+
+def _dest_folder(chosen):
+    """Where this job's file goes: the folder picked for it ("ask every
+    time"), else the default from Settings."""
+    d = Path(os.path.expanduser(str(chosen).strip())) if chosen else Path(settings.load()["download_dir"])
+    if not d.is_absolute():
+        raise InputError("Pick a full folder path.")
+    try:
+        d.mkdir(parents=True, exist_ok=True)
+    except OSError:
+        raise InputError(f"Can't write to {d}.") from None
+    return d
 
 
 def _find(rows, fid, kind):
@@ -340,16 +354,16 @@ def _work_dir(job):
     # Each job downloads into its own folder and only the finished file is
     # moved out. Two jobs on the same video (say M4A and WAV of one stream)
     # would otherwise share an intermediate file and delete each other's.
-    d = Path(settings.load()["download_dir"]) / ".ytd-tmp" / job.id
+    d = job.dest / ".ytd-tmp" / job.id
     d.mkdir(parents=True, exist_ok=True)
     job.work = d
     return d
 
 
-def _deliver(src, name):
+def _deliver(job, src, name):
     """Move a finished file into the download folder without overwriting:
     'x.mp4' becomes 'x (2).mp4' if needed."""
-    out = Path(settings.load()["download_dir"])
+    out = job.dest
     stem, ext = os.path.splitext(name)
     dest, n = out / name, 2
     while dest.exists():
@@ -386,6 +400,10 @@ def _run(job):
     finally:
         if job.work:
             shutil.rmtree(job.work, ignore_errors=True)
+            try:
+                job.work.parent.rmdir()  # the shared .ytd-tmp, once no job is using it
+            except OSError:
+                pass
 
 
 def _download(job):
@@ -453,7 +471,7 @@ def _download(job):
     path = (info.get("requested_downloads") or [{}])[0].get("filepath")
     if not path or not os.path.exists(path):
         raise RuntimeError("Download finished but the output file is missing.")
-    job.file = path if req.get("editor") else _deliver(path, os.path.basename(path))
+    job.file = path if req.get("editor") else _deliver(job, path, os.path.basename(path))
 
 
 _STD_RATES = (23.976, 24, 25, 29.97, 30, 48, 50, 59.94, 60)
@@ -553,4 +571,4 @@ def _encode(job):
         tmp_out.unlink(missing_ok=True)
         forget_encoders()
         raise RuntimeError(f"Encode failed: {err.strip().splitlines()[-1] if err.strip() else rc}")
-    job.file = _deliver(tmp_out, dest_name)
+    job.file = _deliver(job, tmp_out, dest_name)

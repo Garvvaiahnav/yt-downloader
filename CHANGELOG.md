@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.7.0
+- Settings → Download folder: Choose… opens the system folder picker.
+- New option: "Ask every time" picks a folder for each download; "Always save here" keeps one folder.
+- Windows one-line installer no longer hangs after installing.
+- Updates start sooner after launch.
+
 ## 1.6.1
 - Convert-for-editing bitrates now stop at the source's quality. The top option keeps the source quality; higher numbers only made files bigger.
 - yt-dlp 2026.10.21 bundled.

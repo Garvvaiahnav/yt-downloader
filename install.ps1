@@ -35,7 +35,10 @@ Unblock-File $file
 Write-Host "Installing..." -ForegroundColor Cyan
 # /SILENT shows the install progress; the installer closes a running copy and reopens the app.
 $installArgs = @("/SILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/CLOSEAPPLICATIONS")
-$p = Start-Process -FilePath $file -ArgumentList $installArgs -Wait -PassThru
+# Wait for the installer only. Start-Process -Wait would also wait for the app
+# the installer opens at the end, and never return.
+$p = Start-Process -FilePath $file -ArgumentList $installArgs -PassThru
+$p.WaitForExit()
 Remove-Item $file -Force -ErrorAction SilentlyContinue
 if ($p.ExitCode -ne 0) { Stop-Install "the installer exited with code $($p.ExitCode)." }
 

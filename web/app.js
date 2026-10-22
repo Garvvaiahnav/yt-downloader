@@ -474,6 +474,22 @@ $("#picker").addEventListener("click", async e => {
   render();
 });
 
+let lastFolder = null;
+
+// "Ask every time": the system folder chooser, starting where the last
+// download went. Typed path when the UI runs in a plain browser.
+async function askFolder() {
+  const start = lastFolder || sys.settings.download_dir;
+  let path;
+  if (sys.native_picker) {
+    try { path = (await api("/api/pick-folder", { start })).path; } catch (ex) { toast(ex.message); return null; }
+  } else {
+    path = prompt("Save to folder:", start);
+  }
+  if (path) lastFolder = path;
+  return path || null;
+}
+
 async function startJob(btn) {
   const body = { url: info.source_url, item: info.item, kind: sel.kind };
   if (sel.kind === "video") {
@@ -485,6 +501,11 @@ async function startJob(btn) {
     body.audio_id = sel.aid;
     body.audio_out = sel.aout;
     if (sel.aout === "mp3") body.mp3_kbps = sel.mp3;
+  }
+  if (sys?.settings.ask_folder) {
+    const folder = await askFolder();
+    if (!folder) return;  // cancelled: nothing queued
+    body.folder = folder;
   }
   btn.disabled = true;
   try {
@@ -662,7 +683,13 @@ function renderSettings() {
   $("#settings").innerHTML = `
   <div class="card">
     <h3>Download folder</h3>
-        <form class="field" id="dirForm"><input id="dir" value="${esc(s.download_dir)}" spellcheck="false"><button class="btn sec">Save</button></form>
+        <form class="field" id="dirForm"><input id="dir" value="${esc(s.download_dir)}" spellcheck="false">
+      ${sys.native_picker ? `<button type="button" class="btn sec" data-choose>${icon("folder")}Choose…</button>` : ""}<button class="btn sec">Save</button></form>
+    <div class="seg" style="margin-top:12px">
+      <button data-askfolder="0" class="${s.ask_folder ? "" : "on"}">Always save here</button>
+      <button data-askfolder="1" class="${s.ask_folder ? "on" : ""}">Ask every time</button>
+    </div>
+    <p class="muted small" style="margin:8px 0 0">${s.ask_folder ? "Each download asks where to save, starting from this folder." : "Every download goes straight to this folder."}</p>
   </div>
   <div class="card" id="acctCard"></div>
   <div class="card">
@@ -680,11 +707,27 @@ function renderSettings() {
   <div class="card" id="updCard"></div>
   <div class="card about">
     <img src="mascot-still.png" alt="" width="44" height="65">
-    <div><h3>Video Downloader ${esc(sys.version || "")}</h3><p>Developed by Garv. Built between chai breaks.</p></div>
+    <div><h3>Video Downloader ${esc(sys.version || "")}</h3><p>Developed by Garv.</p></div>
   </div>`;
   if (upd) renderUpdate();
   renderAccount();
 }
+
+$("#settings").addEventListener("click", async e => {
+  const choose = e.target.closest("[data-choose]"), ask = e.target.closest("[data-askfolder]");
+  try {
+    if (choose) {
+      const r = await api("/api/pick-folder", { start: $("#dir").value });
+      if (!r.path) return;
+      sys.settings = await api("/api/settings", { download_dir: r.path });
+      toast("Saved");
+      renderSettings();
+    } else if (ask) {
+      sys.settings = await api("/api/settings", { ask_folder: ask.dataset.askfolder === "1" });
+      renderSettings();
+    }
+  } catch (ex) { toast(ex.message); }
+});
 
 $("#settings").addEventListener("submit", async e => {
   if (e.target.id !== "dirForm") return;
@@ -732,7 +775,10 @@ async function loadUpdate() {
   try { upd = await api("/api/app-update"); } catch { return; }
   renderUpdate();
   clearTimeout(updTimer);
-  updTimer = setTimeout(loadUpdate, ["downloading", "restarting"].includes(upd.status) ? 500 : 60000);
+  // Fast while an update is on its way (the launch check lands seconds after
+  // the window opens); once a minute when there's nothing to do.
+  const wait = { downloading: 500, restarting: 500, idle: 3000, available: 3000, ready: 5000 }[upd.status] ?? 60000;
+  updTimer = setTimeout(loadUpdate, wait);
 }
 
 // A verified update installs itself once nothing is downloading: a short

@@ -34,6 +34,7 @@ _lock = threading.Lock()
 _DEFAULTS = {
     "download_dir": str(Path.home() / ("Movies" if sys.platform == "darwin" else "Downloads") / "Video Downloader"),
     "cookies_browser": "",
+    "ask_folder": False,  # True: pick a folder for every download
 }
 
 
@@ -57,6 +58,8 @@ def save(changes):
                 raise ValueError("Folder must be an absolute path.")
             d.mkdir(parents=True, exist_ok=True)
             data["download_dir"] = str(d)
+        if "ask_folder" in changes:
+            data["ask_folder"] = bool(changes["ask_folder"])
         if "cookies_browser" in changes:
             if changes["cookies_browser"] not in BROWSERS:
                 raise ValueError("Unsupported browser.")

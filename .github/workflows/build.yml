@@ -1,0 +1,113 @@
+name: Build installers
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+# Default token is read-only; only the release job asks for write.
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e  # v6
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+      - name: Build installer
+        env:
+          WINDOWS_PFX_BASE64: ${{ secrets.WINDOWS_PFX_BASE64 }}
+          WINDOWS_PFX_PASSWORD: ${{ secrets.WINDOWS_PFX_PASSWORD }}
+        run: powershell -ExecutionPolicy Bypass -File packaging\build_windows.ps1
+      - name: Smoke test the built app
+        shell: pwsh
+        run: |
+          $p = Start-Process "build\dist\YT Downloader\YT Downloader.exe" -PassThru
+          $ok = $false
+          foreach ($i in 1..60) {
+            Start-Sleep 2
+            foreach ($port in 8765..8770) {
+              try { $r = Invoke-RestMethod "http://127.0.0.1:$port/api/system" -TimeoutSec 3; $ok = $true; $r | ConvertTo-Json -Depth 4; break } catch {}
+            }
+            if ($ok) { break }
+          }
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          if (-not $ok) { throw "App server did not start" }
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: windows-installer
+          path: dist/YT Downloader Setup.exe
+
+  mac:
+    runs-on: macos-14
+    env:
+      HAS_MAC_CERT: ${{ secrets.MAC_CERT_P12_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e  # v6
+      - name: Install create-dmg
+        run: brew install create-dmg
+      - name: Import signing certificate
+        if: env.HAS_MAC_CERT == 'true'
+        env:
+          MAC_CERT_P12_BASE64: ${{ secrets.MAC_CERT_P12_BASE64 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+        run: |
+          KC="$RUNNER_TEMP/sign.keychain-db"
+          security create-keychain -p ci "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p ci "$KC"
+          echo "$MAC_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KC" -P "$MAC_CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k ci "$KC"
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+      - name: Build DMG
+        env:
+          MAC_SIGN_IDENTITY: ${{ secrets.MAC_SIGN_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: bash packaging/build_mac.sh "$PWD/dist"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
+        with:
+          name: mac-dmg
+          path: dist/YT Downloader.dmg
+
+  release:
+    # Tags only: publish the installers plus the signed update manifest the
+    # app checks (ytd/appupdate.py).
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, mac]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093  # v4
+        with:
+          path: art
+      - name: Check tag matches version
+        run: |
+          v=$(sed -E 's/.*"(.+)".*/\1/' ytd/__init__.py)
+          [ "v$v" = "$GITHUB_REF_NAME" ] || { echo "tag $GITHUB_REF_NAME != version $v"; exit 1; }
+      - name: Sign manifest
+        env:
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+        run: |
+          mkdir rel
+          cp "art/mac-dmg/YT Downloader.dmg" rel/YT-Downloader-mac-arm64.dmg
+          cp "art/windows-installer/YT Downloader Setup.exe" rel/YT-Downloader-Setup-win-x64.exe
+          pip install --quiet pycryptodomex
+          python packaging/make_manifest.py rel "$GITHUB_REPOSITORY" rel/YT-Downloader-mac-arm64.dmg rel/YT-Downloader-Setup-win-x64.exe
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python - <<'PY' > notes.md
+          import json; print(json.load(open("rel/manifest.json"))["notes"])
+          PY
+          gh release create "$GITHUB_REF_NAME" rel/* --title "YT Downloader ${GITHUB_REF_NAME#v}" --notes-file notes.md

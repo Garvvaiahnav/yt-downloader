@@ -1,0 +1,8 @@
+__pycache__/
+.venv/
+.ytd-tmp/
+build/
+dist/
+packaging/bin/
+._*
+.DS_Store

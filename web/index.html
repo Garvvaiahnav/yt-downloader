@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en" data-theme="tl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Downloader</title>
+<link rel="icon" href="icon-64.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<div id="app">
+  <nav class="rail">
+    <div class="logo" aria-hidden="true">
+      <img src="icon-64.png" alt="" width="30" height="30">
+    </div>
+    <button class="ri on" data-view="download" title="Download" aria-label="Download"><svg class="i"><use href="#i-download"/></svg></button>
+    <button class="ri" data-view="settings" title="Settings" aria-label="Settings"><svg class="i"><use href="#i-sliders"/></svg></button>
+  </nav>
+
+  <header class="top">
+    <div class="crumb"><span class="src"><svg class="i"><use href="#i-link"/></svg><span id="srcName">Any link</span></span><span id="viewTitle">Download</span></div>
+    <div class="topr" id="engine"></div>
+  </header>
+
+  <main class="page">
+    <div id="updateBar" class="upbar" hidden></div>
+    <section id="v-download" class="view">
+      <div class="cols">
+        <div class="left">
+          <div class="perch"><img id="mascot" src="mascot.webp" alt="" width="68" height="100" draggable="false"></div>
+          <form id="probeForm" class="card composer" autocomplete="off">
+            <input id="url" type="text" inputmode="url" spellcheck="false" placeholder="Paste a YouTube, Instagram, Facebook, X, Threads or TikTok link" aria-label="Video link">
+            <button class="btn pri" id="probeBtn" type="submit">Fetch</button>
+          </form>
+          <p id="probeErr" class="err" hidden></p>
+          <div id="picker"></div>
+        </div>
+        <aside class="right">
+          <div class="qhead"><h2>Downloads</h2><span id="qcount" class="muted"></span></div>
+          <div id="queue"></div>
+          <p class="credit">Made by Garv</p>
+        </aside>
+      </div>
+    </section>
+
+    <section id="v-settings" class="view" hidden>
+      <div id="settings" class="settings"></div>
+    </section>
+  </main>
+</div>
+
+<div id="toast" class="toast" hidden></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4M12 16.5v.01M10.3 4.2 2.6 17.5A2 2 0 0 0 4.3 20.5h15.4a2 2 0 0 0 1.7-3L13.7 4.2a2 2 0 0 0-3.4 0z"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></symbol>
+  <symbol id="i-stop" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="2"/></symbol>
+</svg>
+<script src="app.js"></script>
+</body>
+</html>

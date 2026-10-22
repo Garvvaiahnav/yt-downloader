@@ -1,5 +1,5 @@
 #!/bin/bash
-# Build "YT Downloader.dmg" (Apple Silicon). Run from anywhere on a Mac with uv.
+# Build "Video Downloader.dmg" (Apple Silicon). Run from anywhere on a Mac with uv.
 # Builds in a temp folder on the internal disk: external exFAT drives add
 # ._ files that break code signing.
 #
@@ -20,7 +20,7 @@ uv sync --group build --frozen --quiet
 uv run --frozen python packaging/fetch_bins.py
 uv run --frozen pyinstaller --noconfirm --clean --workpath "$WORK/build" --distpath "$WORK/dist" packaging/ytd.spec
 
-APP="$WORK/dist/YT Downloader.app"
+APP="$WORK/dist/Video Downloader.app"
 xattr -cr "$APP"
 if [ -n "${MAC_SIGN_IDENTITY:-}" ]; then
   # Inside out: every binary, then the bundle, with the hardened runtime.
@@ -32,23 +32,23 @@ else
 fi
 
 mkdir -p "$OUT"
-DMG="$OUT/YT Downloader.dmg"
+DMG="$OUT/Video Downloader.dmg"
 rm -f "$DMG"
 tiffutil -cathidpicheck packaging/dmg-background.png packaging/dmg-background@2x.png -out "$WORK/bg.tiff" >/dev/null
 mkdir -p "$WORK/dmg"
 cp -R "$APP" "$WORK/dmg/"
 if command -v create-dmg >/dev/null 2>&1 && create-dmg \
-    --volname "YT Downloader" --background "$WORK/bg.tiff" \
+    --volname "Video Downloader" --background "$WORK/bg.tiff" \
     --window-size 640 400 --icon-size 96 --text-size 12 \
-    --icon "YT Downloader.app" 170 190 --app-drop-link 470 190 \
-    --hide-extension "YT Downloader.app" --no-internet-enable \
+    --icon "Video Downloader.app" 170 190 --app-drop-link 470 190 \
+    --hide-extension "Video Downloader.app" --no-internet-enable \
     "$DMG" "$WORK/dmg/" >/dev/null; then
   :
 else
   # No Finder (headless) or no create-dmg: a plain DMG still installs fine.
   rm -f "$DMG"
   ln -s /Applications "$WORK/dmg/Applications"
-  hdiutil create -volname "YT Downloader" -srcfolder "$WORK/dmg" -ov -format UDZO "$DMG" >/dev/null
+  hdiutil create -volname "Video Downloader" -srcfolder "$WORK/dmg" -ov -format UDZO "$DMG" >/dev/null
 fi
 
 if [ -n "${MAC_SIGN_IDENTITY:-}" ]; then

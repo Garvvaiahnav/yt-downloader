@@ -678,7 +678,7 @@ function renderSettings() {
   <div class="card" id="updCard"></div>
   <div class="card about">
     <img src="mascot-still.png" alt="" width="44" height="65">
-    <div><h3>YT Downloader ${esc(sys.version || "")}</h3><p>Made by Garv. Built between chai breaks.</p></div>
+    <div><h3>Video Downloader ${esc(sys.version || "")}</h3><p>Made by Garv. Built between chai breaks.</p></div>
   </div>`;
   if (upd) renderUpdate();
   renderAccount();

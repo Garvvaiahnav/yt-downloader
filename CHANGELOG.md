@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.4.0
+- Renamed to Video Downloader. Your settings and sign-in carry over.
+- New downloads go to a "Video Downloader" folder (Movies on Mac, Downloads on Windows) unless you picked a folder in Settings.
+
 ## 1.3.0
 - Sign in to YouTube inside the app (Settings → YouTube account). Fixes "Sign in to confirm you're not a bot" and age-restricted videos, without reading another browser's cookies.
 - A browser-cookie setting that can't be read no longer breaks downloads; the app carries on signed out and says so.

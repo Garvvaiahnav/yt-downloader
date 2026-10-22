@@ -42,7 +42,7 @@ def main():
 
     port = free_port("127.0.0.1", args.port)
     url = f"http://127.0.0.1:{port}"
-    print("\n  YT Downloader is running.\n")
+    print("\n  Video Downloader is running.\n")
     print("  It opens in your browser automatically. If it doesn't, open this link:\n")
     print(f"      {url}\n")
     print("  Keep this window open while you use it. Close it (or press Ctrl+C) to stop.\n", flush=True)

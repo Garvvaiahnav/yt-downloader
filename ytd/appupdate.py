@@ -139,7 +139,7 @@ def _download(asset, dest):
 
 
 def _app_bundle():
-    # .../YT Downloader.app/Contents/MacOS/YT Downloader
+    # .../Video Downloader.app/Contents/MacOS/Video Downloader
     return Path(sys.executable).resolve().parents[2]
 
 
@@ -161,12 +161,14 @@ def _install_mac(dmg, version, work):
     _step("App identity", info.get("CFBundleIdentifier") == BUNDLE_ID, info.get("CFBundleIdentifier", "?"))
     _step("App version", info.get("CFBundleShortVersionString") == version, info.get("CFBundleShortVersionString", "?"))
 
-    target = _app_bundle()
+    old = _app_bundle()
+    # Same folder, the new release's name (handles the YT -> Video Downloader rename).
+    target = old.parent / new.name
     script = work / "swap.sh"
     script.write_text(f"""#!/bin/bash
 while kill -0 {os.getpid()} 2>/dev/null; do sleep 0.2; done
-rm -rf "{target}.old" && mv "{target}" "{target}.old" && ditto "{new}" "{target}" && rm -rf "{target}.old" \\
-  || {{ rm -rf "{target}"; mv "{target}.old" "{target}"; }}
+mv "{old}" "{old}.old" && ditto "{new}" "{target}" && rm -rf "{old}.old" \\
+  || {{ rm -rf "{target}"; mv "{old}.old" "{old}"; }}
 open "{target}"
 rm -rf "{work}"
 """)

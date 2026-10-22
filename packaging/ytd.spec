@@ -8,7 +8,7 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules, copy
 
 ROOT = Path(SPECPATH).parent
 IS_MAC = sys.platform == "darwin"
-NAME = "YT Downloader"
+NAME = "Video Downloader"
 VERSION = re.search(r'"(.+)"', (ROOT / "ytd" / "__init__.py").read_text()).group(1)
 
 exe_suffix = ".exe" if sys.platform == "win32" else ""

@@ -63,7 +63,7 @@ def dmg(scale):
     d.line((250 * scale, y, 390 * scale, y), fill=BLUE + (255,), width=4 * scale)
     d.polygon([(392 * scale, y), (376 * scale, y - 10 * scale), (376 * scale, y + 10 * scale)], fill=BLUE + (255,))
     paste_mascot(img, 84 * scale, 320 * scale, y - 8 * scale)
-    d.text((w / 2, 40 * scale), "Drag YT Downloader into Applications", font=font(17 * scale), fill=(250, 250, 250), anchor="mm")
+    d.text((w / 2, 40 * scale), "Drag Video Downloader into Applications", font=font(17 * scale), fill=(250, 250, 250), anchor="mm")
     d.text((w / 2, 330 * scale), "Made by Garv", font=font(15 * scale, True), fill=(250, 250, 250), anchor="mm")
     d.text((w / 2, 354 * scale), "Built between chai breaks. It downloads videos; it doesn't judge your watch history.",
            font=font(11 * scale), fill=(142, 142, 152), anchor="mm")

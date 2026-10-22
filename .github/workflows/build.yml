@@ -26,7 +26,7 @@ jobs:
       - name: Smoke test the built app
         shell: pwsh
         run: |
-          $p = Start-Process "build\dist\YT Downloader\YT Downloader.exe" -PassThru
+          $p = Start-Process "build\dist\Video Downloader\Video Downloader.exe" -PassThru
           $ok = $false
           foreach ($i in 1..60) {
             Start-Sleep 2
@@ -40,7 +40,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: windows-installer
-          path: dist/YT Downloader Setup.exe
+          path: dist/Video Downloader Setup.exe
 
   mac:
     runs-on: macos-14
@@ -75,7 +75,7 @@ jobs:
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02  # v4
         with:
           name: mac-dmg
-          path: dist/YT Downloader.dmg
+          path: dist/Video Downloader.dmg
 
   release:
     # Tags only: publish the installers plus the signed update manifest the
@@ -99,10 +99,10 @@ jobs:
           UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
         run: |
           mkdir rel
-          cp "art/mac-dmg/YT Downloader.dmg" rel/YT-Downloader-mac-arm64.dmg
-          cp "art/windows-installer/YT Downloader Setup.exe" rel/YT-Downloader-Setup-win-x64.exe
+          cp "art/mac-dmg/Video Downloader.dmg" rel/Video-Downloader-mac-arm64.dmg
+          cp "art/windows-installer/Video Downloader Setup.exe" rel/Video-Downloader-Setup-win-x64.exe
           pip install --quiet pycryptodomex
-          python packaging/make_manifest.py rel "$GITHUB_REPOSITORY" rel/YT-Downloader-mac-arm64.dmg rel/YT-Downloader-Setup-win-x64.exe
+          python packaging/make_manifest.py rel "$GITHUB_REPOSITORY" rel/Video-Downloader-mac-arm64.dmg rel/Video-Downloader-Setup-win-x64.exe
       - name: Publish release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -110,4 +110,4 @@ jobs:
           python - <<'PY' > notes.md
           import json; print(json.load(open("rel/manifest.json"))["notes"])
           PY
-          gh release create "$GITHUB_REF_NAME" rel/* --title "YT Downloader ${GITHUB_REF_NAME#v}" --notes-file notes.md
+          gh release create "$GITHUB_REF_NAME" rel/* --title "Video Downloader ${GITHUB_REF_NAME#v}" --notes-file notes.md

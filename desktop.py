@@ -23,7 +23,7 @@ import webview  # noqa: E402
 
 from ytd.api import app  # noqa: E402
 
-TITLE = "YT Downloader"
+TITLE = "Video Downloader"
 
 
 SAFARI_UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 "

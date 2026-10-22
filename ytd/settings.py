@@ -32,7 +32,7 @@ _lock = threading.Lock()
 # macOS asks permission before any app writes to Downloads, Desktop or
 # Documents; Movies is not on that list, and it is where editors look anyway.
 _DEFAULTS = {
-    "download_dir": str(Path.home() / ("Movies" if sys.platform == "darwin" else "Downloads") / "YT Downloader"),
+    "download_dir": str(Path.home() / ("Movies" if sys.platform == "darwin" else "Downloads") / "Video Downloader"),
     "cookies_browser": "",
 }
 

@@ -1,7 +1,7 @@
 ; Inno Setup script for the Windows installer. Built by build_windows.ps1.
 ; Per-user install: no admin prompt, no UAC.
 
-#define AppName "YT Downloader"
+#define AppName "Video Downloader"
 #ifndef AppVersion
   #define AppVersion "0.0.0"
 #endif
@@ -18,7 +18,7 @@ DisableDirPage=yes
 DisableWelcomePage=no
 PrivilegesRequired=lowest
 OutputDir=..\dist
-OutputBaseFilename=YT Downloader Setup
+OutputBaseFilename=Video Downloader Setup
 SetupIconFile=icon.ico
 WizardImageFile=wizard.bmp,wizard@2x.bmp
 WizardSmallImageFile=wizard-small.bmp,wizard-small@2x.bmp
@@ -29,6 +29,12 @@ WizardStyle=modern
 ArchitecturesAllowed=x64compatible
 ArchitecturesInstallIn64BitMode=x64compatible
 CloseApplications=yes
+
+[InstallDelete]
+; The app was called "YT Downloader" up to 1.3; clear its exe and shortcuts.
+Type: files; Name: "{app}\YT Downloader.exe"
+Type: files; Name: "{autoprograms}\YT Downloader.lnk"
+Type: files; Name: "{autodesktop}\YT Downloader.lnk"
 
 [Tasks]
 Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription: "Shortcuts:"
@@ -46,7 +52,7 @@ Filename: "{app}\{#AppName}.exe"; Description: "Open {#AppName}"; Flags: nowait 
 Filename: "{app}\{#AppName}.exe"; Flags: nowait; Check: WizardSilent
 
 [Messages]
-WelcomeLabel1=YT Downloader
+WelcomeLabel1=Video Downloader
 WelcomeLabel2=Made by Garv.%n%nDownloads videos from YouTube, Instagram, Facebook, X, Threads and TikTok, and converts them so Premiere Pro and After Effects actually open them.%n%nBuilt between chai breaks. It downloads videos; it doesn't judge your watch history.
 FinishedHeadingLabel=Done. Go make something good.
-FinishedLabel=YT Downloader is installed. Made by Garv; the mascot did the heavy lifting.
+FinishedLabel=Video Downloader is installed. Made by Garv; the mascot did the heavy lifting.

@@ -17,7 +17,7 @@ for src, _ in binaries:
     if not Path(src).is_file():
         raise SystemExit(f"Missing {src}. Run packaging/fetch_bins.py first.")
 
-datas = [(str(ROOT / "web"), "web")]
+datas = [(str(ROOT / "web"), "web"), (str(ROOT / "aepanel"), "aepanel")]
 datas += collect_data_files("yt_dlp_ejs") + collect_data_files("certifi") + collect_data_files("webview")
 # updater.py compares the bundled versions against downloaded updates.
 datas += copy_metadata("yt-dlp") + copy_metadata("yt-dlp-ejs")

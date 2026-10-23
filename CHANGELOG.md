@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.9.0
+- After Effects panel: paste a link inside AE, pick ProRes 422, H.264 or Original, and Download & Import puts it in your project (and the active comp) in one click. Install it from Settings → After Effects panel, then restart AE and open Window → Extensions → Video Downloader.
+- The local API only answers this computer's own app and panel; web pages can no longer reach it.
+
 ## 1.8.0
 - Bulk downloads: paste many links (or a YouTube playlist), pick a max resolution and an output (Original, Premiere-ready H.264, ProRes 422, M4A or MP3), and everything is queued. Links that fail show up in Downloads with the reason.
 

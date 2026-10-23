@@ -64,6 +64,14 @@ ffmpeg, ffprobe and deno are bundled; nothing else needs installing.
 If downloads start failing, Settings → Update yt-dlp, then restart the app.
 Age-restricted and members-only videos need Settings → Browser cookies.
 
+## After Effects panel
+
+Settings → After Effects panel → Install, restart After Effects, then
+Window → Extensions → Video Downloader. Paste a link, pick ProRes 422 (smoothest
+in AE), H.264 or Original, and **Download & Import** lands it in the project's
+"Video Downloader" folder, and in the active comp if that box is ticked. The
+Video Downloader app must be open; the panel's button opens it if it isn't.
+
 ## Build
 
 - Mac: `packaging/build_mac.sh` → `dist/Video Downloader.dmg`

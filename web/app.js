@@ -29,7 +29,7 @@ const fmt = {
 async function api(path, body, method) {
   const r = await fetch(path, {
     method: method || (body ? "POST" : "GET"),
-    headers: body ? { "Content-Type": "application/json" } : {},
+    headers: { "X-VD": "1", ...(body ? { "Content-Type": "application/json" } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await r.json().catch(() => ({}));
@@ -626,11 +626,45 @@ function renderEngine() {
     ${sys.update_available ? `<button class="btn sec sm" data-update>${icon("refresh")}Update ${esc(sys.ytdlp_latest)}</button>` : ""}`;
 }
 
+/* After Effects panel: installed into AE's extensions folder by the app */
+let ae = null;
+
+async function loadAE() {
+  try { ae = await api("/api/aepanel"); } catch { return; }
+  renderAE();
+}
+
+function renderAE() {
+  const card = $("#aeCard");
+  if (!card || !ae) return;
+  if (!ae.supported) { card.hidden = true; return; }
+  const fresh = ae.installed === ae.current;
+  card.innerHTML = `
+    <h3>After Effects panel</h3>
+    <p>Download straight into After Effects: paste a link in the panel, pick ProRes or H.264, and it lands in your project (and the active comp) in one click.</p>
+    ${ae.installed ? `<div class="acct ok">${icon("check")}<span>Installed (${esc(ae.installed)}). In After Effects: Window → Extensions → Video Downloader.</span>
+        ${fresh ? "" : `<button class="btn sec sm" data-aeinstall>Update panel</button>`}</div>`
+      : `<button class="btn pri" data-aeinstall>Install After Effects panel</button>`}
+    <p class="muted small" style="margin:8px 0 0">Restart After Effects after installing. The app needs to be open while the panel downloads.</p>`;
+}
+
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-aeinstall]");
+  if (!b) return;
+  b.disabled = true;
+  try {
+    ae = await api("/api/aepanel/install", {});
+    toast("Panel installed. Restart After Effects, then open Window → Extensions → Video Downloader.");
+    renderAE();
+  } catch (ex) { toast(ex.message); b.disabled = false; }
+});
+
 let acct = null;
 
 async function loadAccount() {
   try { acct = await api("/api/account"); } catch { return; }
   renderAccount();
+  renderAE();
 }
 
 function renderAccount() {
@@ -692,6 +726,7 @@ function renderSettings() {
     <p class="muted small" style="margin:8px 0 0">${s.ask_folder ? "Each download asks where to save, starting from this folder." : "Every download goes straight to this folder."}</p>
   </div>
   <div class="card" id="acctCard"></div>
+  <div class="card" id="aeCard"></div>
   <div class="card">
     <h3>Engine</h3>
     <dl class="kv">
@@ -949,5 +984,5 @@ document.querySelectorAll(".ri[data-view]").forEach(b => b.addEventListener("cli
 
 renderQueue();
 connect();
-loadSystem().then(() => { loadUpdate(); loadAccount(); }).catch(ex => toast(ex.message));
+loadSystem().then(() => { loadUpdate(); loadAccount(); loadAE(); }).catch(ex => toast(ex.message));
 $("#url").focus();

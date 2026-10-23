@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video Downloader</title>
+<link rel="stylesheet" href="panel.css">
+</head>
+<body>
+<header>
+  <img src="mascot.png" alt="" id="mascot" width="26" height="38">
+  <div><b>Video Downloader</b><small id="conn">Connecting…</small></div>
+</header>
+
+<section id="offline" hidden>
+  <p>Video Downloader isn't running. The panel uses the app to download.</p>
+  <button class="pri" id="launch">Open Video Downloader</button>
+</section>
+
+<section id="main" hidden>
+  <form id="getForm" autocomplete="off">
+    <input id="url" spellcheck="false" placeholder="Paste a video link">
+    <button class="pri" type="submit" id="getBtn">Get</button>
+  </form>
+  <p id="err" class="err" hidden></p>
+
+  <div id="video" hidden>
+    <div class="vid"><div class="thumb" id="thumb"></div><div><b id="title"></b><small id="meta"></small></div></div>
+    <label class="lbl">Format</label>
+    <div class="chips" id="modes">
+      <button data-mode="prores" class="on" title="Smoothest scrubbing in After Effects; large files">ProRes 422</button>
+      <button data-mode="h264" title="Converted at source quality; small files">H.264</button>
+      <button data-mode="original" title="As the site serves it, no re-encode">Original</button>
+    </div>
+    <label class="lbl">Resolution</label>
+    <div class="chips" id="res"></div>
+    <label class="check"><input type="checkbox" id="toComp" checked> Add to the active comp</label>
+    <button class="pri wide" id="go">Download &amp; Import</button>
+  </div>
+
+  <div id="job" hidden>
+    <div class="bar"><i id="barFill"></i></div>
+    <small id="jobText"></small>
+  </div>
+
+  <h4>Recent downloads</h4>
+  <div id="recent"><small class="muted">Nothing yet.</small></div>
+</section>
+
+<footer>Developed by Garv</footer>
+<script src="panel.js"></script>
+</body>
+</html>

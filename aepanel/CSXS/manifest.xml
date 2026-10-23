@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Video Downloader panel for After Effects. __VERSION__ is filled in by the
+     app when it installs the panel (ytd/aepanel.py). -->
+<ExtensionManifest Version="7.0" ExtensionBundleId="com.garv.videodownloader" ExtensionBundleVersion="__VERSION__"
+                   ExtensionBundleName="Video Downloader" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ExtensionList>
+    <Extension Id="com.garv.videodownloader.panel" Version="__VERSION__"/>
+  </ExtensionList>
+  <ExecutionEnvironment>
+    <HostList>
+      <Host Name="AEFT" Version="[16.0,99.9]"/>
+    </HostList>
+    <LocaleList><Locale Code="All"/></LocaleList>
+    <RequiredRuntimeList><RequiredRuntime Name="CSXS" Version="9.0"/></RequiredRuntimeList>
+  </ExecutionEnvironment>
+  <DispatchInfoList>
+    <Extension Id="com.garv.videodownloader.panel">
+      <DispatchInfo>
+        <Resources>
+          <MainPath>./index.html</MainPath>
+          <ScriptPath>./host/index.jsx</ScriptPath>
+          <CEFCommandLine>
+            <Parameter>--enable-nodejs</Parameter>
+            <Parameter>--mixed-context</Parameter>
+          </CEFCommandLine>
+        </Resources>
+        <Lifecycle><AutoVisible>true</AutoVisible></Lifecycle>
+        <UI>
+          <Type>Panel</Type>
+          <Menu>Video Downloader</Menu>
+          <Geometry>
+            <Size><Height>620</Height><Width>360</Width></Size>
+            <MinSize><Height>360</Height><Width>280</Width></MinSize>
+          </Geometry>
+          <Icons>
+            <Icon Type="Normal">./icon.png</Icon>
+            <Icon Type="DarkNormal">./icon.png</Icon>
+          </Icons>
+        </UI>
+      </DispatchInfo>
+    </Extension>
+  </DispatchInfoList>
+</ExtensionManifest>

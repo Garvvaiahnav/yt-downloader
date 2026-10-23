@@ -82,8 +82,9 @@ def main():
             break
         time.sleep(0.05)
     url = f"http://127.0.0.1:{port}"
-    from ytd import appupdate
+    from ytd import aepanel, appupdate
     appupdate.start_checks()
+    threading.Thread(target=aepanel.refresh, daemon=True).start()
 
     from ytd import account
     account.open_window = open_signin

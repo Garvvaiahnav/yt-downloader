@@ -11,13 +11,29 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import __version__, account, appupdate, bulk, jobs, native, settings, updater
+from . import __version__, account, aepanel, appupdate, bulk, jobs, native, settings, updater
 from .formats import InputError
 from .tools import IS_MAC, IS_WIN, NO_WINDOW, encoder_label, encoders, version
 
 # Installed app: files unpacked under sys._MEIPASS. Dev: the repo root.
 ROOT = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parent.parent))
 app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
+
+
+@app.middleware("http")
+async def local_only(request: Request, call_next):
+    """The API drives downloads and opens files, so only this machine's own
+    UI and the After Effects panel may use it:
+      - Host must be 127.0.0.1/localhost (stops DNS-rebinding pages),
+      - every write must carry X-VD: 1. Browsers won't send a custom header
+        cross-origin without a CORS preflight this server never approves, so
+        a web page can't trigger a download behind the user's back."""
+    host = (request.headers.get("host") or "").rsplit(":", 1)[0].strip("[]")
+    if host not in ("127.0.0.1", "localhost", "::1"):
+        return JSONResponse({"error": "Forbidden"}, status_code=403)
+    if request.method not in ("GET", "HEAD", "OPTIONS") and request.headers.get("x-vd") != "1":
+        return JSONResponse({"error": "Forbidden"}, status_code=403)
+    return await call_next(request)
 
 
 @app.exception_handler(InputError)
@@ -27,7 +43,7 @@ async def input_error(_, exc):
 
 @app.post("/api/probe")
 async def probe(body: dict):
-    return await asyncio.to_thread(jobs.probe, body.get("url"))
+    return await asyncio.to_thread(jobs.probe, body.get("url"), body.get("item"))
 
 
 @app.post("/api/jobs")
@@ -123,6 +139,29 @@ def system():
     }
 
 
+@app.post("/api/quick")
+async def quick(body: dict):
+    """One-click download with default stream choices (the AE panel)."""
+    preset = {"mode": body.get("mode") or "prores", "max_h": body.get("max_h"), "folder": body.get("folder")}
+
+    def go():
+        return jobs.submit(bulk.pick(jobs.probe(body.get("url"), body.get("item")), preset)).public()
+    return await asyncio.to_thread(go)
+
+
+@app.get("/api/aepanel")
+def aepanel_status():
+    return aepanel.status()
+
+
+@app.post("/api/aepanel/install")
+def aepanel_install():
+    try:
+        return aepanel.install()
+    except Exception as e:
+        raise HTTPException(500, str(e))
+
+
 @app.post("/api/bulk")
 async def bulk_start(body: dict):
     preset = {"mode": body.get("mode"), "max_h": body.get("max_h"), "folder": body.get("folder")}
@@ -196,4 +235,6 @@ async def update():
     return {"version": new, "changed": changed}
 
 
+# Preview of the After Effects panel in a browser (same origin, so plain fetch works).
+app.mount("/aepanel", StaticFiles(directory=ROOT / "aepanel", html=True), name="aepanel")
 app.mount("/", StaticFiles(directory=ROOT / "web", html=True), name="web")

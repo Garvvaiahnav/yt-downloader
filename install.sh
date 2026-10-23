@@ -16,6 +16,17 @@ FEED="https://github.com/$REPO/releases/latest/download"
 APP="Video Downloader.app"
 
 say() { printf '\033[1m%s\033[0m\n' "$*"; }
+
+# One line, redrawn in place: [#########---------]  45%   52 / 128 MB   8.4 MB/s
+progress() {  # bytes_done bytes_total seconds
+  local done=$1 total=$2 secs=$3 pct=0 bar
+  [ "$total" -gt 0 ] && pct=$(( done * 100 / total ))
+  [ "$pct" -gt 100 ] && pct=100
+  bar=$(printf '%*s' $(( pct / 4 )) '' | tr ' ' '#')
+  bar=$(printf '%-25s' "$bar" | tr ' ' '-')
+  printf '\r  [%s] %3d%%  %4d / %d MB  %5s MB/s ' "$bar" "$pct" $(( done / 1048576 )) $(( total / 1048576 )) \
+    "$( [ "$secs" -gt 0 ] && echo "scale=1; $done / 1048576 / $secs" | bc || echo " ")"
+}
 die() { printf 'Install stopped: %s\n' "$*" >&2; exit 1; }
 
 [ "$(uname -s)" = "Darwin" ] || die "this installer is for Mac. On Windows use install.ps1."
@@ -30,6 +41,7 @@ fi
 WORK="$(mktemp -d)"
 MNT="$WORK/mnt"
 cleanup() {
+  [ -n "${CURL:-}" ] && kill "$CURL" 2>/dev/null || true
   hdiutil detach "$MNT" -quiet >/dev/null 2>&1 || true
   rm -rf "$WORK"
 }
@@ -40,13 +52,23 @@ curl -fsSL "$FEED/manifest.json" -o "$WORK/manifest.json" || die "could not reac
 VERSION="$(plutil -extract version raw -o - "$WORK/manifest.json")"
 URL="$(plutil -extract assets.darwin-arm64.url raw -o - "$WORK/manifest.json")"
 SHA="$(plutil -extract assets.darwin-arm64.sha256 raw -o - "$WORK/manifest.json")"
+SIZE="$(plutil -extract assets.darwin-arm64.size raw -o - "$WORK/manifest.json")"
 case "$URL" in
   "https://github.com/$REPO/releases/download/"*) ;;
   *) die "the release points somewhere unexpected." ;;
 esac
 
 say "Downloading Video Downloader $VERSION..."
-curl -fL --progress-bar "$URL" -o "$WORK/app.dmg" || die "download failed."
+curl -fsSL "$URL" -o "$WORK/app.dmg" </dev/null &
+CURL=$!
+START=$(date +%s)
+while kill -0 "$CURL" 2>/dev/null; do
+  progress "$(stat -f%z "$WORK/app.dmg" 2>/dev/null || echo 0)" "$SIZE" $(( $(date +%s) - START ))
+  sleep 0.5
+done
+wait "$CURL" || { printf '\n'; die "download failed. Run the command again."; }
+progress "$(stat -f%z "$WORK/app.dmg")" "$SIZE" $(( $(date +%s) - START ))
+printf '\n'
 [ "$(shasum -a 256 "$WORK/app.dmg" | cut -d' ' -f1)" = "$SHA" ] || die "the download is corrupted (checksum mismatch). Run the command again."
 
 say "Installing to $DEST..."

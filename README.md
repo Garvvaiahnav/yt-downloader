@@ -4,7 +4,7 @@
 
 Desktop app for video editors: download from YouTube, Instagram, Facebook, X,
 Threads and TikTok at the exact resolution and codec you pick, convert to
-files Premiere Pro and After Effects open (H.264, HEVC, ProRes 422), and
+files Premiere Pro and After Effects open (H.264 MP4), and
 import straight into After Effects with the built-in panel.
 
 Developed by Garv. A license key is required; ask Garv for one.
